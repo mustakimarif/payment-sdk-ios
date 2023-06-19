@@ -18,22 +18,38 @@ class OrderCreationViewController: UIViewController {
     let paymentMethod: PaymentMethod?
     let purchasedItems: [Product]
     var paymentRequest: PKPaymentRequest?
+    let transactionType: String
+    let orderType: String
+    let recurringType: String?
+    let numberOfTenure: Int?
+    let frequency: String?
     
     init(paymentAmount: Double,
          cardPaymentDelegate: CardPaymentDelegate,
          storeFrontDelegate: StoreFrontDelegate,
          using paymentMethod: PaymentMethod = .Card,
-         with purchasedItems: [Product]) {
+         with purchasedItems: [Product],
+         transactionType: String,
+         orderType: String,
+         recurringType: String?,
+         numberOfTenure: Int?,
+         frequency: String?
+    ) {
         
         self.cardPaymentDelegate = cardPaymentDelegate
         self.paymentAmount = paymentAmount
         self.paymentMethod = paymentMethod
         self.purchasedItems = purchasedItems
         self.storeFrontDelegate = storeFrontDelegate
+        self.transactionType = transactionType
+        self.orderType = orderType
+        self.recurringType = recurringType
+        self.numberOfTenure = numberOfTenure
+        self.frequency = frequency
         super.init(nibName: nil, bundle: nil)
                 
         if(paymentMethod == .ApplePay) {
-            let merchantId = ""
+            let merchantId = "merchant.com.ni.ksamerchant"
             assert(!merchantId.isEmpty, "You need to add your apple pay merchant ID above")
             paymentRequest = PKPaymentRequest()
             paymentRequest?.merchantIdentifier = merchantId
@@ -73,13 +89,22 @@ class OrderCreationViewController: UIViewController {
     }
     
     func createOrder() {
+        var recurringDetails: RecurringDetails!
+        if (orderType == "RECURRING") {
+            recurringDetails = RecurringDetails(recurringType: recurringType!, numberOfTenure: numberOfTenure)
+        } else { recurringDetails = nil }
         // Multiply amount always by 100 while creating an order
-        let orderRequest = OrderRequest(action: "SALE",
-                                        amount: OrderAmount(currencyCode: "AED", value: paymentAmount * 100))
+        let orderRequest = OrderRequest(action: transactionType,
+                                        amount: OrderAmount(currencyCode: "AED", value: paymentAmount * 100),
+                                        type: orderType,
+                                        recurringDetails: recurringDetails,
+                                        frequency: frequency
+        )
+        print(orderRequest)
         let encoder = JSONEncoder()
         let orderRequestData = try! encoder.encode(orderRequest)
         let headers = ["Content-Type": "application/json"]
-        let request = NSMutableURLRequest(url: NSURL(string: "http://localhost:3000/api/createOrder")! as URL,
+        let request = NSMutableURLRequest(url: NSURL(string: "http://192.168.30.11:3000/api/createOrder")! as URL,
                                           cachePolicy: .useProtocolCachePolicy,
                                           timeoutInterval: 10.0)
         request.httpMethod = "POST"
@@ -94,6 +119,7 @@ class OrderCreationViewController: UIViewController {
             if let data = data {
                 do {
                     let orderResponse: OrderResponse = try JSONDecoder().decode(OrderResponse.self, from: data)
+                    print(orderResponse)
                     let sharedSDKInstance = NISdk.sharedInstance
                     DispatchQueue.main.async {
                         self?.dismiss(animated: false, completion: { [weak self] in
@@ -110,6 +136,7 @@ class OrderCreationViewController: UIViewController {
                         })
                     }
                 } catch let error {
+                    print(error)
                     self?.displayErrorAndClose(error: error)
                 }
             }

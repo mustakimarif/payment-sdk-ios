@@ -13,6 +13,9 @@ import Foundation
 struct OrderRequest: Encodable {
     let action: String
     let amount: OrderAmount
+    let type: String
+    let recurringDetails: RecurringDetails?
+    let frequency: String?
     
     private enum  OrderRequestCodingKeys: String, CodingKey {
         case action
